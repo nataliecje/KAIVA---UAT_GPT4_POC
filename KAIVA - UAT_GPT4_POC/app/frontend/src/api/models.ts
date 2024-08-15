@@ -61,10 +61,23 @@ export type ResponseChoice = {
 export type ChatAppResponseOrError = {
     choices?: ResponseChoice[];
     error?: string;
+
+    // -------------------------- edited code ------------------------------
+    message: ResponseMessage;
+    delta: ResponseMessage;
+    context: ResponseContext;
+    session_state: any;
 };
 
 export type ChatAppResponse = {
     choices: ResponseChoice[];
+
+    // -------------------------- edited code ------------------------------
+    // added, then chat page is shown, but adaptive yet to be shown
+    message: ResponseMessage;
+    delta: ResponseMessage;
+    context: ResponseContext;
+    session_state: any;
 };
 
 export type ChatAppRequestContext = {
@@ -83,3 +96,4 @@ export type Config = {
     showSemanticRankerOption: boolean;
     showVectorOption: boolean;
 };
+

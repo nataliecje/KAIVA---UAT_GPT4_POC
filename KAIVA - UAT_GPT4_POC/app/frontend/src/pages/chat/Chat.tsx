@@ -3,6 +3,10 @@ import { Checkbox, Panel, DefaultButton, TextField, SpinButton, Slider } from "@
 import { SparkleFilled } from "@fluentui/react-icons";
 import readNDJSONStream from "ndjson-readablestream";
 import ChatLogo from "../../pages/Logos/KaivaLogo.png"; // Replace with the actual path to your logo image
+import AdaptiveCardRenderer from "../../components/AdaptiveCardRenderer/AdaptiveCardRenderer";
+import ACR2 from "../../components/AdaptiveCardRenderer/ACR2";
+
+
 
 import styles from "./Chat.module.css";
 
@@ -86,11 +90,15 @@ const Chat = () => {
             return new Promise(resolve => {
                 setTimeout(() => {
                     answer += newContent;
-                    const latestResponse: ChatAppResponse = {
+                    // added if clause
+                    if (askResponse && askResponse.choices && askResponse.choices[0]) {
+                        const latestResponse: ChatAppResponse = {
                         ...askResponse,
                         choices: [{ ...askResponse.choices[0], message: { content: answer, role: askResponse.choices[0].message.role } }]
-                    };
-                    setStreamedAnswers([...answers, [question, latestResponse]]);
+                        };
+                        setStreamedAnswers([...answers, [question, latestResponse]]);
+                    // added bracket
+                    }
                     resolve(null);
                 }, 33);
             });
@@ -122,6 +130,25 @@ const Chat = () => {
     };
 
     const client = useLogin ? useMsal().instance : undefined;
+    
+    // ----------------------------------- edited code ------------------------------------------
+    // adaptive card
+    const [showCard, setShowCard] = useState<boolean>(false);
+
+    // keywords
+    const keywords = ["adaptive", "workflow", "card", "uipath"];
+    const containsKeywords = (message: string, keywords: string[]): boolean => {
+        const messageLower = message.toLowerCase();
+        return keywords.some(keyword => messageLower.includes(keyword));
+    };
+
+    // keywords set 2 to trigger diff adaptive cards
+    const keywords2 = ["automation", "integration", "api", "bot"];
+    const containsKeywords2 = (message: string, keywords2: string[]): boolean => {
+        const messageLower = message.toLowerCase();
+        return keywords2.some(keyword => messageLower.includes(keyword));
+    };
+    // ------------------------------------------------------------------------------------------
 
     const makeApiRequest = async (question: string) => {
         lastQuestionRef.current = question;
@@ -130,6 +157,26 @@ const Chat = () => {
         setIsLoading(true);
         setActiveCitation(undefined);
         setActiveAnalysisPanelTab(undefined);
+
+        // ----------------------------------- edited code ------------------------------------------
+        // Check for keywords in the message
+        if (containsKeywords(question, keywords)) {
+            setShowCard(true);
+            setIsLoading(false);
+            // setAnswers([...answers, [question, { message: { content: "show adaptive card", role: "system" } } as ChatAppResponse]]);
+            setAnswers([...answers, [question, { choices: [{ message: { content: "show adaptive card", role: "system" } }] } as ChatAppResponse]]);
+            return;
+        } else if 
+            (containsKeywords2(question, keywords2)) {
+                setShowCard(true);
+                setIsLoading(false);
+                setAnswers([...answers, [question, { choices: [{ message: { content: "show adaptive card 2", role: "system" } }] } as ChatAppResponse]]);
+                return;
+        } else {
+            setShowCard(false);
+        }
+        // ------------------------------------------------------------------------------------------
+
 
         const token = client ? await getToken(client) : undefined;
 
@@ -160,7 +207,8 @@ const Chat = () => {
                     }
                 },
                 // ChatAppProtocol: Client must pass on any session state received from the server
-                session_state: answers.length ? answers[answers.length - 1][1].choices[0].session_state : null
+                // session_state: answers.length ? answers[answers.length - 1][1].choices[0].session_state : null
+                session_state: answers.length ? answers[answers.length - 1][1]?.choices[0]?.session_state : null
             };
 
             const response = await chatApi(request, token);
@@ -313,17 +361,24 @@ const Chat = () => {
                                     <div key={index}>
                                         <UserChatMessage message={answer[0]} />
                                         <div className={styles.chatMessageGpt}>
-                                            <Answer
-                                                isStreaming={false}
-                                                key={index}
-                                                answer={answer[1]}
-                                                isSelected={selectedAnswer === index && activeAnalysisPanelTab !== undefined}
-                                                onCitationClicked={c => onShowCitation(c, index)}
-                                                onThoughtProcessClicked={() => onToggleTab(AnalysisPanelTabs.ThoughtProcessTab, index)}
-                                                onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab, index)}
-                                                onFollowupQuestionClicked={q => makeApiRequest(q)}
-                                                showFollowupQuestions={useSuggestFollowupQuestions && answers.length - 1 === index}
-                                            />
+                                            {/* --------------------------- edited code ------------------------------------ */}
+                                            {answer[1].choices[0].message.content === "show adaptive card" ? (
+                                                    <AdaptiveCardRenderer /> // renders first adaptive card
+                                                ) : answer[1].choices[0].message.content === "show adaptive card 2" ? (
+                                                    <ACR2 /> // Renders the second adaptive card
+                                                ) : (
+                                                <Answer
+                                                    isStreaming={false}
+                                                    key={index}
+                                                    answer={answer[1]}
+                                                    isSelected={selectedAnswer === index && activeAnalysisPanelTab !== undefined}
+                                                    onCitationClicked={c => onShowCitation(c, index)}
+                                                    onThoughtProcessClicked={() => onToggleTab(AnalysisPanelTabs.ThoughtProcessTab, index)}
+                                                    onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab, index)}
+                                                    onFollowupQuestionClicked={q => makeApiRequest(q)}
+                                                    showFollowupQuestions={useSuggestFollowupQuestions && answers.length - 1 === index}
+                                                />
+                                            )}
                                         </div>
                                     </div>
                                 ))}

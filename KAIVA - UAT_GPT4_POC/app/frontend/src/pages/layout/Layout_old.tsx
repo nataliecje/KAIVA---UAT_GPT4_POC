@@ -48,8 +48,7 @@ const Layout = () => {
                             </ul>
                         </div>
                     </nav>
-
-                    {useLogin && <LoginButton />}
+                    <LoginButton />
                 </div>
             </header>
 
